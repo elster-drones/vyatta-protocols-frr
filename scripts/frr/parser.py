@@ -156,7 +156,12 @@ class VyattaJSONParser:
                 os.fsync(write_file.fileno())
             shutil.chown(temporary, owner, owner)
             if check_only:
-                if os.path.ismount(path):
+                # ismount() cannot detect a bind mount on the same filesystem.
+                target = os.path.abspath(path).replace('\\', r'\134').replace(' ', r'\040')
+                target = target.replace('\t', r'\011').replace('\n', r'\012')
+                with open('/proc/self/mountinfo') as mounts:
+                    mounted = any(line.split()[4] == target for line in mounts)
+                if mounted:
                     raise OSError(errno.EBUSY, 'Configuration target is a mount point', path)
             else:
                 os.replace(temporary, path)

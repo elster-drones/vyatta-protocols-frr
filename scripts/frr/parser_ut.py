@@ -9,7 +9,7 @@ import json
 import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from unittest.mock import patch
+from unittest.mock import mock_open, patch
 
 
 class ParserTestCase(unittest.TestCase):
@@ -28,7 +28,8 @@ class ParserTestCase(unittest.TestCase):
         with TemporaryDirectory() as directory:
             target = Path(directory) / 'frr.conf'
             target.write_text('previous configuration')
-            with patch('parser.shutil.chown'), patch('parser.os.path.ismount', return_value=True):
+            mount = f'1 2 0:1 / {target} rw - overlay overlay rw\n'
+            with patch('parser.shutil.chown'), patch('parser.open', mock_open(read_data=mount)):
                 with self.assertRaises(OSError):
                     VyattaJSONParser().output_config(str(target), 'routing', check_only=True)
             self.assertEqual(target.read_text(), 'previous configuration')
