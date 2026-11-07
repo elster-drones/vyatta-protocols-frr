@@ -12,7 +12,13 @@
     "/protocols/ospfv3": "router ospf6",
     "/protocols/ospfv3/area/@element/range/@element": "area {/../../tagnode/@text} range {/tagnode/@text} [cost {/metric/@text},] $if|not-advertise,|{/not-advertise/@text}==None$",
     "/protocols/ospfv3/area/@element/stub": "area {../tagnode/@text} stub $if|no-summary,|{/no-summary/@text}==None$",
-    "/protocols/ospfv3/area/@element/interface/@element": "interface {/tagnode/@text/} area {../../tagnode/@text}",
+    "/protocols/ospfv3/area/@element/interface/@element": [
+        "exit",
+        "interface {/tagnode/@text}",
+        "ipv6 ospf6 area {/../../tagnode/@text}",
+        "exit",
+        "router ospf6"
+    ],
     "/protocols/ospfv3/auto-cost/reference-bandwidth": "auto-cost reference-bandwidth {/@text}",
     "/protocols/ospfv3/distance/global": "distance {/@text}",
     "/protocols/ospfv3/distance/ospfv3/external": "distance ospf6 external {/@text}",

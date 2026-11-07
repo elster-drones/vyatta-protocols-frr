@@ -12,6 +12,21 @@ from unittest.mock import patch
 
 
 class ParserTestCase(unittest.TestCase):
+    def test_ospfv3_area_uses_frr107_interface_context(self):
+        configs = Path(__file__).parent / 'configs'
+        parser = VyattaJSONParser()
+        parser.tree = parser.decode_vyatta_config(json.dumps({
+            'protocols': {'ospfv3': {'router-id': '192.0.2.1',
+                'area': [{'tagnode': '0.0.0.0', 'interface': [
+                    {'tagnode': 'dp0p8s0'}, {'tagnode': 'dp0p9s0'}]}]}}}))
+        parser.discover_syntax(str(configs / 'commands'))
+        parser.load_steps(str(configs / 'steps.json'))
+        parser.execute_steps()
+        text = '\n'.join(parser.output)
+        for name in ['dp0p8s0', 'dp0p9s0']:
+            self.assertIn('exit\ninterface ' + name + '\nipv6 ospf6 area 0.0.0.0\nexit\nrouter ospf6', text)
+            self.assertNotIn('interface ' + name + ' area', text)
+
     def test_virtual_link_md5_key_in_default_and_vrf(self):
         ospf = {'area': [{'tagnode': '0.0.0.1', 'virtual-link': [
             {'tagnode': '2.2.2.2', 'authentication': {'md5': None,
