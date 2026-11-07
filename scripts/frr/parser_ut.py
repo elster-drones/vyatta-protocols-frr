@@ -13,6 +13,17 @@ from unittest.mock import mock_open, patch
 
 
 class ParserTestCase(unittest.TestCase):
+    def test_isis_hello_interval_uses_frr107_level_order(self):
+        configs = Path(__file__).parent / 'configs'
+        parser = VyattaJSONParser()
+        parser.tree = parser.decode_vyatta_config(json.dumps({'interfaces': [
+            {'tagnode': 'dp0p8s0', 'isis': {'hello-interval': {'level-1': 1, 'level-2': 2}}}]}))
+        parser.discover_syntax(str(configs / 'commands'))
+        parser.load_steps(str(configs / 'steps.json'))
+        parser.execute_steps()
+        self.assertIn('isis hello-interval level-1 1', parser.output)
+        self.assertIn('isis hello-interval level-2 2', parser.output)
+
     def test_validation_preserves_existing_configuration(self):
         with TemporaryDirectory() as directory:
             target = Path(directory) / 'frr.conf'
