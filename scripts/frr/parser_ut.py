@@ -3,15 +3,61 @@
 #
 # SPDX-License-Identifier: GPL-2.0-only
 
-from parser import VyattaJSONParser, TEXT_LEAF_LABEL, OrderedDict, DIR_TRAVERSE_UP_LABEL, DICT_ELEM_LABEL
+from parser import VyattaJSONParser, TEXT_LEAF_LABEL, OrderedDict, DIR_TRAVERSE_UP_LABEL, DICT_ELEM_LABEL, main
 import unittest
 import json
+import subprocess
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 
 class ParserTestCase(unittest.TestCase):
+    def test_validation_preserves_existing_configuration(self):
+        with TemporaryDirectory() as directory:
+            target = Path(directory) / 'frr.conf'
+            target.write_text('previous configuration')
+            parser = VyattaJSONParser()
+            parser.output = ['new configuration']
+            with patch('parser.shutil.chown'):
+                parser.output_config(str(target), 'routing', check_only=True)
+            self.assertEqual(target.read_text(), 'previous configuration')
+            self.assertEqual(list(Path(directory).iterdir()), [target])
+
+    def test_validation_rejects_mount_target_and_cleans_temporary_file(self):
+        with TemporaryDirectory() as directory:
+            target = Path(directory) / 'frr.conf'
+            target.write_text('previous configuration')
+            with patch('parser.shutil.chown'), patch('parser.os.path.ismount', return_value=True):
+                with self.assertRaises(OSError):
+                    VyattaJSONParser().output_config(str(target), 'routing', check_only=True)
+            self.assertEqual(target.read_text(), 'previous configuration')
+            self.assertEqual(list(Path(directory).iterdir()), [target])
+
+    def test_check_validates_syntax_without_reload_or_replacement(self):
+        for status in [0, 2]:
+            with self.subTest(status=status), TemporaryDirectory() as directory:
+                source = Path(directory) / 'candidate.json'
+                source.write_text('{}')
+                target = Path(directory) / 'frr.conf'
+                target.write_text('previous configuration')
+                argv = ['parser.py', '--check', '-i', str(source), '-o', str(target),
+                        '-c', str(Path(__file__).parent / 'configs')]
+                with patch('parser.sys.argv', argv), patch('parser.shutil.chown'), \
+                     patch('parser.subprocess.run', return_value=subprocess.CompletedProcess([], status)) as command:
+                    if status:
+                        with self.assertRaises(SystemExit) as result:
+                            main()
+                        self.assertEqual(result.exception.code, status)
+                    else:
+                        main()
+                    command.assert_called_once()
+                    self.assertEqual(command.call_args.args[0],
+                                     ['/usr/bin/vtysh', '-C', '-f', '/dev/stdin'])
+                self.assertEqual(target.read_text(), 'previous configuration')
+                self.assertEqual(sorted(p.name for p in Path(directory).iterdir()),
+                                 ['candidate.json', 'frr.conf'])
+
     def test_ospfv3_area_uses_frr107_interface_context(self):
         configs = Path(__file__).parent / 'configs'
         parser = VyattaJSONParser()

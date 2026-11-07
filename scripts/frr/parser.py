@@ -6,6 +6,7 @@
 from argparse import ArgumentParser
 from collections import OrderedDict
 import json
+import errno
 import os
 from os import listdir
 import shutil
@@ -140,7 +141,7 @@ class VyattaJSONParser:
             self.syntax = {}
             step.execute(self)
 
-    def output_config(self, path, owner):
+    def output_config(self, path, owner, check_only=False):
         """Write the already parsed config to a file"""
         config = '\n'.join([*self.output, '!'])
         if self.debug:
@@ -154,7 +155,11 @@ class VyattaJSONParser:
                 write_file.flush()
                 os.fsync(write_file.fileno())
             shutil.chown(temporary, owner, owner)
-            os.replace(temporary, path)
+            if check_only:
+                if os.path.ismount(path):
+                    raise OSError(errno.EBUSY, 'Configuration target is a mount point', path)
+            else:
+                os.replace(temporary, path)
         finally:
             if os.path.exists(temporary):
                 os.unlink(temporary)
@@ -344,6 +349,8 @@ def main():
                         const=True, default=False)
     parser.add_argument('--no-reload', help='do not trigger FRR reload', action='store_const',
                         const=False, default=True, dest='reload')
+    parser.add_argument('--check', help='validate syntax and output access without applying',
+                        action='store_true')
     args = parser.parse_args()
 
     v = VyattaJSONParser(debug=args.d)
@@ -352,9 +359,15 @@ def main():
     v.discover_syntax(args.c + COMMANDS_DIRNAME)
     v.load_steps(args.c + STEPS_FILENAME)
     v.execute_steps()
-    v.output_config(args.o, OUTPUT_FILE_OWNER)
+    if args.check:
+        config = '\n'.join([*v.output, '!'])
+        result = subprocess.run(['/usr/bin/vtysh', '-C', '-f', '/dev/stdin'],
+                                input=config, text=True)
+        if result.returncode:
+            sys.exit(result.returncode)
+    v.output_config(args.o, OUTPUT_FILE_OWNER, check_only=args.check)
 
-    if args.reload:
+    if args.reload and not args.check:
         ret = subprocess.run([ FRR_RELOAD, "--stdout", "--reload", "--log-level", "warning",
                                "/etc/vyatta-routing/frr.conf" ],
                              stdout=sys.stdout, stderr=sys.stderr)

@@ -6,10 +6,11 @@
 package main
 
 import (
+	"bytes"
 	"encoding/json"
 	"eng.vyatta.net/protocols"
 	"eng.vyatta.net/protocols/static"
-	"errors"
+	"fmt"
 	log "github.com/Sirupsen/logrus"
 	"github.com/danos/encoding/rfc7951"
 	multierr "github.com/hashicorp/go-multierror"
@@ -43,12 +44,11 @@ func doReload() error {
 
 	debugOn := log.IsLevelEnabled(log.DebugLevel)
 
-	if (err != nil || debugOn) && len(out) > 0 {
-		// If debug is enabled or there was an error, and output was collected
-		// from the parser, return it instead of any generic error.
-		err = errors.New(string(out))
-	} else if err != nil {
-		err = errors.New(err_msg)
+	if debugOn && len(out) > 0 {
+		log.Debugln(string(out))
+	}
+	if err != nil {
+		err = fmt.Errorf("%s: %s", err_msg, out)
 	}
 
 	ret_err := protocols.NewMultiError()
@@ -93,31 +93,58 @@ func registerSubscriptions(pmc *protocols.ProtocolsModelComponent, cfg []byte) {
 		routingInstanceAddedCallback)
 }
 
-func Set(pmc *protocols.ProtocolsModelComponent, cfg []byte) error {
-	var frontend_interface, old_frontend_interface interface{}
-
-	pmc_cfg, err := protocols.ParseJsonComponentConfig(cfg)
-	if err != nil {
-		return err
-	}
-
+func translatedConfig(pmc *protocols.ProtocolsModelComponent, cfg []byte) (map[string]interface{}, error) {
 	old_cfg := pmc.Get()
 	old_conv_cfg, err := protocols.ConvertConfigToInternalJson(old_cfg)
 	if err != nil {
 		log.Errorln("Failed to convert old config from RFC 7951 JSON: " + err.Error())
-		return err
+		return nil, err
 	}
-	json.Unmarshal(old_conv_cfg, &old_frontend_interface)
-	old_frontend_map := old_frontend_interface.(map[string]interface{})
-
-	json.Unmarshal(cfg, &frontend_interface)
-	frontend_map := frontend_interface.(map[string]interface{})
+	var frontend_map, old_frontend_map map[string]interface{}
+	if err = json.Unmarshal(old_conv_cfg, &old_frontend_map); err != nil {
+		return nil, err
+	}
+	if err = json.Unmarshal(cfg, &frontend_map); err != nil {
+		return nil, err
+	}
 
 	//Strip out disabled nexthops and other translations
 	static.Translate(frontend_map, old_frontend_map)
+	return frontend_map, nil
+}
+
+func Check(pmc *protocols.ProtocolsModelComponent, cfg []byte) error {
+	frontend_map, err := translatedConfig(pmc, cfg)
+	if err != nil {
+		return err
+	}
+	translated, err := json.Marshal(frontend_map)
+	if err != nil {
+		return err
+	}
+	command := exec.Command("/opt/vyatta/sbin/parser.py", "-i", "/dev/stdin", "--check")
+	command.Stdin = bytes.NewReader(translated)
+	out, err := command.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("FRR configuration validation failed: %w: %s", err, out)
+	}
+	return nil
+}
+
+func Set(pmc *protocols.ProtocolsModelComponent, cfg []byte) error {
+	pmc_cfg, err := protocols.ParseJsonComponentConfig(cfg)
+	if err != nil {
+		return err
+	}
+	frontend_map, err := translatedConfig(pmc, cfg)
+	if err != nil {
+		return err
+	}
 
 	//Enable MPLS in kernel if required
-	Mpls(frontend_map)
+	if err = Mpls(frontend_map); err != nil {
+		return err
+	}
 
 	//Write new config file
 	jsonString, _ := json.MarshalIndent(frontend_map, "", "    ")
@@ -152,6 +179,7 @@ func Set(pmc *protocols.ProtocolsModelComponent, cfg []byte) error {
 func main() {
 	pmc := protocols.NewProtocolsModelComponent(
 		componentName, v1Component, cfgFileName)
+	pmc.SetCheckFunction(Check)
 	pmc.SetSetFunction(Set)
 	pmc.SetRegisterSubsFunction(registerSubscriptions)
 	pmc.SetCancelSubsFunction(
