@@ -298,5 +298,5 @@ class CommandFillerTestCase(unittest.TestCase):
         self.assertEqual(expected, actual)
 
 
-suite = unittest.TestLoader().loadTestsFromTestCase(CommandFillerTestCase)
-unittest.TextTestRunner(verbosity=2).run(suite)
+if __name__ == '__main__':
+    unittest.main()

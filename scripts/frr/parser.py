@@ -11,6 +11,7 @@ from os import listdir
 import shutil
 import subprocess
 import sys
+import tempfile
 
 from vyatta.command import CommandFiller, MISSING_VALUE_TEMPLATE
 
@@ -117,7 +118,7 @@ class VyattaJSONParser:
         dict with all the syntax commands"""
         self.syntax = {}
         self.discover_syntax(dir_path)
-        for syntax_file in self.syntax_files:
+        for syntax_file in self.syntax_files.values():
             self.syntax = {**self.syntax, **syntax_file.load()}
 
     def load_steps(self, path):
@@ -144,26 +145,22 @@ class VyattaJSONParser:
 
     def output_config(self, path, owner):
         """Write the already parsed config to a file"""
-        # avoid empty file
-        self.output.append('!')
-        config = '\n'.join(self.output)
+        config = '\n'.join([*self.output, '!'])
         if self.debug:
             print(config)
 
+        fd, temporary = tempfile.mkstemp(prefix='.frr-',
+                                         dir=os.path.dirname(path) or '.')
         try:
-            fd = os.open(path, os.O_CREAT | os.O_TRUNC | os.O_WRONLY)
-            # Ensure permissions are set on an existing file
-            os.fchmod(fd, 0o600)
             with os.fdopen(fd, 'w') as write_file:
                 write_file.write(config)
-        except Exception as e:
-            print_err("Failed to write configuration: {}".format(e))
-            return
-
-        try:
-            shutil.chown(path, owner, owner)
-        except Exception as e:
-            print_err("Failed to set configuration file owner: {}".format(e))
+                write_file.flush()
+                os.fsync(write_file.fileno())
+            shutil.chown(temporary, owner, owner)
+            os.replace(temporary, path)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
 
     def prioritize(self, filepath):
         """Reads priorities file and sorts the configuration tree"""

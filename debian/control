@@ -22,7 +22,7 @@ Breaks: vyatta-protocols (<< 1.12.0), frr (<< 7.3.1-0vyatta4)
 Replaces: vyatta-protocols (<< 1.12.0), frr (<< 7.3.1-0vyatta4)
 Architecture: all
 Depends:
- frr (>= 7.5-0danos1),
+ frr (>= 10.7.1),
  frr-snmp,
  vyatta-protocols-common,
  ${misc:Depends}
@@ -97,7 +97,7 @@ Package: vyatta-frr-vci
 Architecture: any
 Priority: optional
 Pre-Depends: adduser
-Depends: frr-pythontools (>= 7.3.1-0vyatta3),
+Depends: frr-pythontools (>= 10.7.1),
  python3 (>= 3.6),
  ${misc:Depends},
  ${shlibs:Depends}

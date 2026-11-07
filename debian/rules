@@ -24,6 +24,12 @@ GO_BUILD_DIR = golang_build
 override_dh_auto_build: vet
 	dh_auto_build
 
+override_dh_auto_test:
+	dh_auto_test
+	mkdir -p $(GO_BUILD_DIR)/python/vyatta
+	ln -sf $(CURDIR)/scripts/frr/command.py $(GO_BUILD_DIR)/python/vyatta/command.py
+	PYTHONPATH=$(CURDIR)/$(GO_BUILD_DIR)/python python3 -m unittest discover -s scripts/frr -p '*_ut.py'
+
 # We do not vet vendor code
 vet:
 	echo "Skipping vet"

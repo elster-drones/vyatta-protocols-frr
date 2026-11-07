@@ -5,9 +5,46 @@
 
 from parser import VyattaJSONParser, TEXT_LEAF_LABEL, OrderedDict, DIR_TRAVERSE_UP_LABEL, DICT_ELEM_LABEL
 import unittest
+from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 
 class ParserTestCase(unittest.TestCase):
+    def test_failed_config_owner_keeps_previous_file(self):
+        with TemporaryDirectory() as directory:
+            target = Path(directory) / 'frr.conf'
+            target.write_text('previous configuration')
+            target.chmod(0o640)
+            parser = VyattaJSONParser()
+            parser.output = ['ip route 192.0.2.0/24 192.0.2.1']
+            with patch('parser.shutil.chown', side_effect=PermissionError):
+                with self.assertRaises(PermissionError):
+                    parser.output_config(str(target), 'routing')
+            self.assertEqual(target.read_text(), 'previous configuration')
+            self.assertEqual(target.stat().st_mode & 0o777, 0o640)
+            self.assertEqual(list(Path(directory).iterdir()), [target])
+
+    def test_config_replace_is_private_and_repeatable(self):
+        with TemporaryDirectory() as directory:
+            target = Path(directory) / 'frr.conf'
+            parser = VyattaJSONParser()
+            parser.output = ['log syslog']
+            with patch('parser.shutil.chown'):
+                parser.output_config(str(target), 'routing')
+                parser.output_config(str(target), 'routing')
+            self.assertEqual(target.read_text(), 'log syslog\n!')
+            self.assertEqual(target.stat().st_mode & 0o777, 0o600)
+            self.assertEqual(parser.output, ['log syslog'])
+
+    def test_load_all_syntax_files(self):
+        with TemporaryDirectory() as directory:
+            (Path(directory) / 'one.json').write_text('{"/one": "one"}')
+            (Path(directory) / 'two.json').write_text('{"/two": "two"}')
+            parser = VyattaJSONParser()
+            parser.read_syntax_files(directory)
+            self.assertEqual(parser.syntax, {'/one': 'one', '/two': 'two'})
+
     def test_find_parent_dict(self):
         l0 = {}
         l1 = {}
@@ -218,5 +255,5 @@ class ParserTestCase(unittest.TestCase):
         self.assertEqual(actual, expected)
 
 
-suite = unittest.TestLoader().loadTestsFromTestCase(ParserTestCase)
-unittest.TextTestRunner(verbosity=2).run(suite)
+if __name__ == '__main__':
+    unittest.main()

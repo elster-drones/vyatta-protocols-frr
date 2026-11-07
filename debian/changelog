@@ -1,3 +1,12 @@
+vyatta-protocols-frr (1.16.0+elster1) trixie; urgency=medium
+
+  * Integrate FRR 10.7.1 mgmtd and staticd with loopback management sockets.
+  * Preserve the previous routing configuration on file/ownership failures and
+    propagate errors to configuration commits; replace complete files atomically.
+  * Run translator regression tests during native package builds.
+
+ -- Erik Ziegenbalg <erikziege@gmail.com>  Sat, 07 Nov 2026 02:36:22 +0000
+
 vyatta-protocols-frr (1.15.3) unstable; urgency=medium
 
   * Provide config for ip nht resolve-via-default

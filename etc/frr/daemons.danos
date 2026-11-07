@@ -10,6 +10,8 @@ isisd=yes
 ospfd=yes
 ospf6d=yes
 ldpd=yes
+mgmtd=yes
+staticd=yes
 
 zebra_options="  -A 127.0.0.1 -s 90000000 -M dplane_fpm_nl"
 bgpd_options="   -A 127.0.0.1"
@@ -17,3 +19,5 @@ isisd_options="  -A 127.0.0.1"
 ospfd_options="  -A 127.0.0.1"
 ospf6d_options=" -A ::1"
 ldpd_options="   -A 127.0.0.1"
+mgmtd_options="  -A 127.0.0.1"
+staticd_options="-A 127.0.0.1"
