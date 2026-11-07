@@ -5,12 +5,44 @@
 
 from parser import VyattaJSONParser, TEXT_LEAF_LABEL, OrderedDict, DIR_TRAVERSE_UP_LABEL, DICT_ELEM_LABEL
 import unittest
+import json
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 
 class ParserTestCase(unittest.TestCase):
+    def test_virtual_link_md5_key_in_default_and_vrf(self):
+        ospf = {'area': [{'tagnode': '0.0.0.1', 'virtual-link': [
+            {'tagnode': '2.2.2.2', 'authentication': {'md5': None,
+             'md5-key-id': [{'tagnode': 1, 'md5-key': 'lab-key'}]}}]}]}
+        fixtures = [
+            {'protocols': {'ospf': ospf}},
+            {'routing': {'routing-instance': [{'instance-name': '77',
+                'protocols': {'ospf': ospf}}]}}]
+        configs = Path(__file__).parent / 'configs'
+        for fixture in fixtures:
+            with self.subTest(fixture=fixture):
+                parser = VyattaJSONParser()
+                parser.tree = parser.decode_vyatta_config(json.dumps(fixture))
+                parser.discover_syntax(str(configs / 'commands'))
+                parser.load_steps(str(configs / 'steps.json'))
+                parser.execute_steps()
+                self.assertIn('area 0.0.0.1 virtual-link 2.2.2.2 '
+                              'message-digest-key 1 md5 lab-key', parser.output)
+
+    def test_config_disk_error_keeps_previous_file(self):
+        with TemporaryDirectory() as directory:
+            target = Path(directory) / 'frr.conf'
+            target.write_text('previous configuration')
+            parser = VyattaJSONParser()
+            parser.output = ['new configuration']
+            with patch('parser.os.fsync', side_effect=OSError(28, 'No space left')):
+                with self.assertRaises(OSError):
+                    parser.output_config(str(target), 'routing')
+            self.assertEqual(target.read_text(), 'previous configuration')
+            self.assertEqual(list(Path(directory).iterdir()), [target])
+
     def test_failed_config_owner_keeps_previous_file(self):
         with TemporaryDirectory() as directory:
             target = Path(directory) / 'frr.conf'

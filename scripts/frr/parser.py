@@ -33,9 +33,6 @@ OUTPUT_FILE_OWNER = "routing"
 FRR_RELOAD = "/usr/lib/frr/frr-reload.py"
 
 
-def print_err(x): return print(x, file=sys.stderr)
-
-
 class VyattaJSONParser:
     """Traverses the json config, visits every node and extracts the values of
     keys referenced in the commands
