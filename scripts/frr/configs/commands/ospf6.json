@@ -10,6 +10,7 @@
     "/interfaces/@element/ipv6/ospfv3/transmit-delay": "ipv6 ospf6 transmit-delay {/@text}",
     "/protocols/ospfv3/@enter": "!",
     "/protocols/ospfv3": "router ospf6",
+    "/protocols/ospfv3/@exit": "exit",
     "/protocols/ospfv3/area/@element/range/@element": "area {/../../tagnode/@text} range {/tagnode/@text} [cost {/metric/@text},] $if|not-advertise,|{/not-advertise/@text}==None$",
     "/protocols/ospfv3/area/@element/stub": "area {../tagnode/@text} stub $if|no-summary,|{/no-summary/@text}==None$",
     "/protocols/ospfv3/area/@element/interface/@element": [

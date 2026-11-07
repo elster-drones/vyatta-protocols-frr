@@ -13,6 +13,7 @@
     "/interfaces/@element/ip/ospf/transmit-delay": "ip ospf transmit-delay {/@text}",
     "/protocols/ospf/@enter": "!",
     "/protocols/ospf": "router ospf",
+    "/protocols/ospf/@exit": "exit",
     "/protocols/ospf/area/@element/authentication" : "area {/../tagnode/@text} authentication $if|message-digest,|{/@text}==md5$",
     "/protocols/ospf/area/@element/area-type/nssa": "area {/../../tagnode/@text} nssa",
     "/protocols/ospf/area/@element/area-type/nssa/default-cost": "area {/../../../tagnode/@text} default-cost {/@text}",
@@ -60,6 +61,7 @@
     "/protocols/ospf/timers/throttle/spf": "timers throttle spf {/delay/@text} {/min-wait/@text} {/max-wait/@text}",
 
     "/routing/routing-instance/@element/protocols/ospf": "router ospf vrf vrf{/../../instance-name/@text}",
+    "/routing/routing-instance/@element/protocols/ospf/@exit": "exit",
     "/routing/routing-instance/@element/protocols/ospf/area/@element/authentication" : "area {/../tagnode/@text} authentication $if|message-digest,|{/@text}==md5$",
     "/routing/routing-instance/@element/protocols/ospf/area/@element/area-type/nssa": "area {/../../tagnode/@text} nssa",
     "/routing/routing-instance/@element/protocols/ospf/area/@element/area-type/nssa/default-cost": "area {/../../../tagnode/@text} default-cost {/@text}",

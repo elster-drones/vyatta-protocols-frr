@@ -7,12 +7,40 @@ from parser import VyattaJSONParser, TEXT_LEAF_LABEL, OrderedDict, DIR_TRAVERSE_
 import unittest
 import json
 import subprocess
+import shutil
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from unittest.mock import mock_open, patch
 
 
 class ParserTestCase(unittest.TestCase):
+    @unittest.skipUnless(shutil.which('vtysh'), 'FRR syntax checker is required')
+    def test_protocol_combinations_are_valid_frr(self):
+        configs = Path(__file__).parent / 'configs'
+        protocols = {
+            'bgp': [{'tagnode': 64512}],
+            'ospf': {'parameters': {'router-id': '192.0.2.1'}},
+            'ospfv3': {'router-id': '192.0.2.1'},
+            'isis': [{'area-tag': 'LAB', 'is-type': 'level-2-only'}],
+        }
+        ldp = {'lsr-id': '192.0.2.1', 'address-family': {'ipv4': {
+            'transport-address': '192.0.2.1',
+            'label-policy': {'allocate': {'host-routes': None}}}}}
+        for name, settings in protocols.items():
+            with self.subTest(protocol=name):
+                parser = VyattaJSONParser()
+                parser.tree = parser.decode_vyatta_config(json.dumps({
+                    'protocols': {name: settings, 'mpls-ldp': ldp}}))
+                parser.prioritize(str(configs / 'priorities.json'))
+                parser.discover_syntax(str(configs / 'commands'))
+                parser.load_steps(str(configs / 'steps.json'))
+                parser.execute_steps()
+                result = subprocess.run(['vtysh', '-C', '-f', '/dev/stdin'],
+                                        input='\n'.join(parser.output), text=True,
+                                        capture_output=True)
+                self.assertEqual(result.returncode, 0,
+                                 result.stdout + result.stderr)
+
     def test_isis_hello_interval_uses_frr107_level_order(self):
         configs = Path(__file__).parent / 'configs'
         parser = VyattaJSONParser()

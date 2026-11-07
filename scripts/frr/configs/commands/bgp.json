@@ -1,6 +1,7 @@
 {
     "/protocols/bgp/@enter": "!",
     "/protocols/bgp/@element": ["router bgp {/tagnode/@text}", "no bgp default ipv4-unicast"],
+    "/protocols/bgp/@element/@exit": "exit",
     "/protocols/bgp/@element/timers": "timers bgp {/keepalive/@text} {/holdtime/@text}",
 
     "/protocols/bgp/@element/parameters/always-compare-med": "bgp always-compare-med",

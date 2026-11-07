@@ -9,6 +9,7 @@ Build-Depends:
  dh-python,
  dh-vci,
  dh-yang,
+ frr (>= 10.7.1) <!nocheck>,
  golang-any,
  golang-github-hashicorp-go-multierror-dev,
  golang-vyatta-protocols-dev (>= 1.14.0),

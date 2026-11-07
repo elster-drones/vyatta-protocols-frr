@@ -21,6 +21,7 @@
     "/interfaces/@element/isis/topology/ipv6-unicast": "isis topology ipv6-unicast",
     "/protocols/isis/@enter": "!",
     "/protocols/isis/@element": "router isis {/area-tag/@text}",
+    "/protocols/isis/@element/@exit": "exit",
     "/protocols/isis/@element/area-password/clear": "area-password clear {/@text}",
     "/protocols/isis/@element/area-password/md5": "area-password md5 {/@text}",
     "/protocols/isis/@element/domain-password/clear": "domain-password clear {/@text}",

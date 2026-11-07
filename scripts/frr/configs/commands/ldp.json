@@ -1,6 +1,7 @@
 {
     "/protocols/mpls-ldp/@enter": "!",
     "/protocols/mpls-ldp": "mpls ldp",
+    "/protocols/mpls-ldp/@exit": "exit",
     "/protocols/mpls-ldp/address-family/ipv4/@enter": " address-family ipv4",
     "/protocols/mpls-ldp/address-family/ipv4/@exit": " exit-address-family",
     "/protocols/mpls-ldp/address-family/ipv4/label-policy/allocate/for/access-list": "  label local allocate for {/@text}",
