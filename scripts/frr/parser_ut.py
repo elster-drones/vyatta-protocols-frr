@@ -13,6 +13,17 @@ from unittest.mock import patch
 
 
 class ParserTestCase(unittest.TestCase):
+    def test_isis_metrics_precede_level_selector(self):
+        configs = Path(__file__).parent / 'configs'
+        parser = VyattaJSONParser()
+        parser.tree = parser.decode_vyatta_config(json.dumps({'interfaces': [
+            {'tagnode': 'dp0p8s0', 'isis': {'metric': {'level-1': 10, 'level-2': 20}}}]}))
+        parser.discover_syntax(str(configs / 'commands'))
+        parser.load_steps(str(configs / 'steps.json'))
+        parser.execute_steps()
+        self.assertIn('isis metric 10 level-1', parser.output)
+        self.assertIn('isis metric 20 level-2', parser.output)
+
     def test_validation_preserves_existing_configuration(self):
         with TemporaryDirectory() as directory:
             target = Path(directory) / 'frr.conf'
